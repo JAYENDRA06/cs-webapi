@@ -105,6 +105,6 @@ public class UserController : ControllerBase
         bool res = _dapper.ExecuteSql(sql);
 
         if(res) return Ok(); 
-        throw new Exception("Insertion failed");
+        throw new Exception("Deletion failed");
     }
 }
