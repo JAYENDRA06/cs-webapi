@@ -12,11 +12,11 @@ namespace DotnetAPI.Controllers;
 
 public class UserEFController : ControllerBase
 {
-    readonly DataContextEF _enitiyFramework;
+    IUserRepository _userRepository;
     readonly IMapper _mapper;
-    public UserEFController(IConfiguration config)
+    public UserEFController(IUserRepository userRepository)
     {
-        _enitiyFramework = new DataContextEF(config);
+        _userRepository = userRepository;
         _mapper = new Mapper(new MapperConfiguration(cfg => {
             cfg.CreateMap<UserToAddDto, User>();
         }));
@@ -25,23 +25,20 @@ public class UserEFController : ControllerBase
     [HttpGet("Getusers")]
     public IEnumerable<User> GetUsers()
     {
-        IEnumerable<User> users = _enitiyFramework.Users.ToList<User>();
-        return users;
+        return _userRepository.GetUsers();
     }
 
-    [HttpGet("Getuser/{userId}")]
+    [HttpGet("GetSingleUser/{userId}")]
     public User GetUser(int userId)
     {
-        User? user = _enitiyFramework.Users.Where(u => u.UserId == userId).FirstOrDefault<User>();
-        if (user != null) return user;
-        throw new Exception("Failed to get user");
+        return _userRepository.GetSingleUser(userId);
     }
 
     [HttpPut("EditUser")]
     // basically not returning any specific data, just telling if req was success or failure
     public IActionResult EditUser(User user)
     {
-        User? userDb = _enitiyFramework.Users.Where(u => u.UserId == user.UserId).FirstOrDefault<User>();
+        User? userDb = _userRepository.GetSingleUser(user.UserId);
         if (userDb != null)
         {
             userDb.Active = user.Active;
@@ -50,8 +47,7 @@ public class UserEFController : ControllerBase
             userDb.Email = user.Email;
             userDb.Gender = user.Gender;
 
-            int res = _enitiyFramework.SaveChanges();
-            if (res > 0) return Ok();
+            if (_userRepository.SaveChanges()) return Ok();
             throw new Exception("Updation failed");
         }
         throw new Exception("Failed to get user");
@@ -72,9 +68,8 @@ public class UserEFController : ControllerBase
         // using AutoMapper
         User userDb = _mapper.Map<User>(user);
 
-        _enitiyFramework.Add(userDb);
-        int res = _enitiyFramework.SaveChanges();
-        if (res > 0) return Ok();
+        _userRepository.AddEntity<User>(userDb);
+        if (_userRepository.SaveChanges()) return Ok();
         throw new Exception("Insertion failed");
 
     }
@@ -82,14 +77,14 @@ public class UserEFController : ControllerBase
     [HttpDelete("DeleteUser/{userId}")]
     public IActionResult DeleteUser(int userId)
     {
-        User? userDb = _enitiyFramework.Users.Where(u => u.UserId == userId).FirstOrDefault<User>();
+        User? userDb = _userRepository.GetSingleUser(userId);
         if(userDb != null){         
-            _enitiyFramework.Users.Remove(userDb);
+            _userRepository.RemoveEntity<User>(userDb);
 
-            int res = _enitiyFramework.SaveChanges();
-            if(res > 0) return Ok();
+            if(_userRepository.SaveChanges()) return Ok();
             throw new Exception("Deletion failed");
         }
         throw new Exception("Failed to get user");
     }
 }
+ 
